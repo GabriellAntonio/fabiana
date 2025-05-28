@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Marmitaria da Fabiana - Login</title>
   <link rel="icon" type="image/x-icon" href="logo.ico">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body, html {
       height: 100%;
@@ -173,7 +174,8 @@
       <div id="resumo">
         <strong>Total de Pedidos:</strong> <span id="totalPedidos">0</span><br />
         <strong>Total Arrecadado:</strong> R$ <span id="totalValor">0,00</span><br />
-        <button onclick="limparPedidos()">🗑️ Limpar Tudo</button>
+        <button onclick="gerarRelatorio()">🖨️ Gerar Relatório PDF</button>
+		<button onclick="limparPedidos()">🗑️ Limpar Tudo</button>
       </div>
     </div>
   </div>
@@ -314,6 +316,63 @@ Hora: ${p.hora} - ${p.data}`;
         atualizarLista();
       }
     }
+async function gerarRelatorio() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Cabeçalho
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Marmitaria da Fabiana", 105, 15, { align: "center" });
+
+  doc.setFontSize(12);
+  doc.text("Relatório Financeiro", 105, 22, { align: "center" });
+
+  // Informações principais
+  const dataAtual = new Date().toLocaleString('pt-BR');
+  const total = pedidos.reduce((soma, p) => soma + p.valor, 0);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(` Data/Hora: ${dataAtual}`, 10, 35);
+  doc.text(` Total de Pedidos: ${pedidos.length}`, 10, 42);
+  doc.text(` Total Arrecadado: R$ ${total.toFixed(2)}`, 10, 49);
+
+  // Tabela
+  let startY = 60;
+  doc.setFont("helvetica", "bold");
+  doc.text("Cliente", 10, startY);
+  doc.text("Tamanho", 50, startY);
+  doc.text("Valor", 90, startY);
+  doc.text("Pagamento", 120, startY);
+  doc.text("Data/Hora", 160, startY);
+
+  doc.setFont("helvetica", "normal");
+  startY += 7;
+
+  pedidos.forEach((p) => {
+    doc.text(p.cliente || "-", 10, startY);
+    doc.text(p.tamanho, 50, startY);
+    doc.text(`R$ ${p.valor.toFixed(2)}`, 90, startY);
+    doc.text(p.pagamento, 120, startY);
+    doc.text(`${p.data} ${p.hora}`, 160, startY);
+    startY += 7;
+    if (startY > 280) {
+      doc.addPage();
+      startY = 20;
+    }
+  });
+
+  // Totalizador logo abaixo da tabela
+  if (startY + 10 > 280) {
+    doc.addPage();
+    startY = 20;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.text(`Total: R$ ${total.toFixed(2)}`, 10, startY + 10);
+
+  doc.save(`Relatorio_Financeiro_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
 
     function imprimir(index) {
       const comanda = document.getElementsByClassName("comanda")[index];
