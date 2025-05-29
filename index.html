@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,6 +6,9 @@
   <title>Marmitaria da Fabiana - Login</title>
   <link rel="icon" type="image/x-icon" href="logo.ico">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <style>
     body, html {
       height: 100%;
@@ -179,34 +183,58 @@
       </div>
     </div>
   </div>
+<script>
+	const firebaseConfig = {
+		apiKey: "AIzaSyB5mr7i2FAc97Ii5X6tyegX5iNwe-I-IZ0",
+		authDomain: "fabiana-93915.firebaseapp.com",
+		projectId: "fabiana-93915",
+		storageBucket: "fabiana-93915.firebasestorage.app",
+		messagingSenderId: "455021406661",
+		appId: "1:455021406661:web:49471c1280c972e0b1c3ac"
+};
 
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+</script>
   <script>
     const loginForm = document.getElementById("loginForm");
     const loginContainer = document.getElementById("loginContainer");
     const mainContainer = document.getElementById("container");
     const logoutBtn = document.getElementById("logoutBtn");
 
-    // Usuário e senha fixos para exemplo:
-    const USUARIO_FIXO = "admin";
-    const SENHA_FIXA = "240699";
+// Autenticação com Firebase
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    mostrarMarmitaria();
+  } else {
+    loginContainer.style.display = "block";
+    mainContainer.style.display = "none";
+  }
+});
 
-    // Checar se já está logado no localStorage
-    if (localStorage.getItem("logado") === "true") {
+loginForm.addEventListener("submit", e => {
+  e.preventDefault();
+  const email = document.getElementById("username").value.trim();
+  const senha = document.getElementById("password").value.trim();
+
+  firebase.auth().signInWithEmailAndPassword(email, senha)
+    .then(() => {
       mostrarMarmitaria();
-    }
-
-    loginForm.addEventListener("submit", e => {
-      e.preventDefault();
-      const user = document.getElementById("username").value.trim();
-      const pass = document.getElementById("password").value.trim();
-
-      if(user === USUARIO_FIXO && pass === SENHA_FIXA) {
-        localStorage.setItem("logado", "true");
-        mostrarMarmitaria();
-      } else {
-        alert("Usuário ou senha incorretos.");
-      }
+    })
+    .catch(error => {
+      alert("Erro ao fazer login: " + error.message);
     });
+});
+
+logoutBtn.addEventListener("click", () => {
+  firebase.auth().signOut().then(() => {
+    loginContainer.style.display = "block";
+    mainContainer.style.display = "none";
+  });
+});
+
 
     logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("logado");
@@ -232,24 +260,27 @@
       document.getElementById(id).classList.add("ativa");
     }
 
-    function carregarPedidos() {
-      const hoje = new Date().toISOString().slice(0,10);
-      const dataSalva = localStorage.getItem("dataPedidos");
-      const pedidosSalvos = localStorage.getItem("pedidos");
+	async function carregarPedidos() {
+		const hoje = new Date().toISOString().slice(0,10);
+		const doc = await db.collection("pedidos").doc(hoje).get();
+		if (doc.exists) {
+			pedidos = doc.data().pedidos;
+		} else {
+			pedidos = [];
+	}
+		atualizarLista();
+}
 
-      if (dataSalva === hoje && pedidosSalvos) {
-        pedidos = JSON.parse(pedidosSalvos);
-      } else {
-        pedidos = [];
-        localStorage.setItem("dataPedidos", hoje);
-        localStorage.setItem("pedidos", JSON.stringify(pedidos));
-      }
-      atualizarLista();
-    }
 
-    function salvarPedidos() {
-      localStorage.setItem("pedidos", JSON.stringify(pedidos));
-    }
+	function salvarPedidos() {
+		const hoje = new Date().toISOString().slice(0,10);
+		localStorage.setItem("dataPedidos", hoje); // ainda pode manter isso
+
+		db.collection("pedidos").doc(hoje).set({
+		pedidos: pedidos
+  });
+}
+
 
     function atualizarLista() {
       listaPedidos.innerHTML = "";
@@ -386,6 +417,12 @@ async function gerarRelatorio() {
 
     carregarPedidos();
 
+// ...outras funções como salvarPedidos(), removerPedido(), etc.
+
+if (localStorage.getItem("logado") === "true") {
+  carregarPedidos();
+}
+</script>
   </script>
 </body>
 </html>
